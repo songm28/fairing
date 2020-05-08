@@ -43,9 +43,18 @@ class Serving(Job):
         for fn in self.pod_spec_mutators:
             fn(self.backend, pod_spec, self.namespace)
         pod_template_spec = self.generate_pod_template_spec(pod_spec)
-        pod_template_spec.spec.containers[0].command = ["seldon-core-microservice",
-                                                        self.serving_class, "REST",
-                                                        "--service-type=MODEL", "--persistence=0"]
+# #        pod_template_spec.spec.containers[0].command = ["seldon-core-microservice",
+# #                                                        self.serving_class, "REST",
+# #                                                        "--service-type=MODEL", "--persistence=0"]
+        cmd_list = list()
+        if pod_template_spec.spec.containers[0].command is not None and len(pod_template_spec.spec.containers[0].command) > 0:
+            cmd_list.extend(pod_template_spec.spec.containers[0].command)
+            cmd_list.append("&&")
+        cmd_list.extend(["seldon-core-microservice",
+                        self.serving_class, "REST",
+                        "--service-type=MODEL", "--persistence=0"])
+        pod_template_spec.spec.containers[0].command = ["sh", "-c", "{}".format(' '.join(cmd_list))]
+        
         self.deployment_spec = self.generate_deployment_spec(pod_template_spec)
         self.service_spec = self.generate_service_spec()
 
