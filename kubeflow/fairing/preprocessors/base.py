@@ -22,7 +22,8 @@ class BasePreProcessor(object):
                  command=None,
                  executable=None,
                  path_prefix=constants.DEFAULT_DEST_PREFIX,
-                 output_map=None):
+                 output_map=None,
+                 to_set_default_executable=True):
         self.executable = executable
         input_files = input_files or []
         command = command or ["python"]
@@ -38,7 +39,8 @@ class BasePreProcessor(object):
         self.path_prefix = path_prefix
         self.command = command
 
-        self.set_default_executable()
+        # self.set_default_executable()
+        if to_set_default_executable: self.set_default_executable()
 
     # TODO: Add workaround for users who do not want to set an executable for
     # their command.
