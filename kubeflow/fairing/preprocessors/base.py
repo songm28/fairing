@@ -115,7 +115,8 @@ class BasePreProcessor(object):
             for dst, src in self.context_map().items():
                 logging.debug("Context: %s, Adding %s at %s", output_file,
                               src, dst)
-                tar.add(src, filter=reset_tar_mtime, arcname=dst, recursive=False)
+                # tar.add(src, filter=reset_tar_mtime, arcname=dst, recursive=False)
+                tar.add(src, filter=reset_tar_mtime, arcname=dst, recursive=True if os.path.isdir(src) else False)
         self._context_tar_path = output_file
         return output_file, utils.crc(self._context_tar_path)
 
