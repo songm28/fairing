@@ -14,11 +14,11 @@ logger = logging.getLogger(__name__)
 class Serving(Job):
     """Serves a prediction endpoint using Kubernetes deployments and services"""
 
-    def __init__(self, serving_class, namespace=None, runs=1, labels=None,
-                 service_type="ClusterIP", pod_spec_mutators=None):
+    def __init__(self, serving_class=None, namespace=None, runs=1, labels=None,
+                 service_type="ClusterIP", pod_spec_mutators=None, use_seldon=True):
         """
 
-        :param serving_class: the name of the class that holds the predict function.
+        :param serving_class: the name of the class that holds the predict function, optional when use_seldon is False.
         :param namespace: The k8s namespace where the it will be deployed.
         :param runs:
         :param labels: label for deployed service
@@ -31,6 +31,7 @@ class Serving(Job):
         self.serving_class = serving_class
         self.service_type = service_type
         self.pod_spec_mutators = pod_spec_mutators or []
+        self.use_seldon=use_seldon
 
     def deploy(self, pod_spec):
         """deploy a seldon-core REST service
@@ -49,10 +50,13 @@ class Serving(Job):
         cmd_list = list()
         if pod_template_spec.spec.containers[0].command is not None and len(pod_template_spec.spec.containers[0].command) > 0:
             cmd_list.extend(pod_template_spec.spec.containers[0].command)
-            cmd_list.append("&&")
-        cmd_list.extend(["seldon-core-microservice",
-                        self.serving_class, "REST",
-                        "--service-type=MODEL", "--persistence=0"])
+            # cmd_list.append("&&")
+        if self.use_seldon:
+            if cmd_list is not None and len(cmd_list)>0: cmd_list.append("&&")
+            cmd_list.extend(["seldon-core-microservice",
+                            self.serving_class, "REST",
+                            "--service-type=MODEL", "--persistence=0"])
+
         pod_template_spec.spec.containers[0].command = ["sh", "-c", "{}".format(' '.join(cmd_list))]
         
         self.deployment_spec = self.generate_deployment_spec(pod_template_spec)
