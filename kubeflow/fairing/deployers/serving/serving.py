@@ -58,9 +58,7 @@ class Serving(Job):
                             self.serving_class, "REST",
                             "--service-type=MODEL", "--persistence=0"])
 
-        if cmd_list is not None and len(cmd_list) > 0: 
-            print(cmd_list)
-            pod_template_spec.spec.containers[0].command = ["sh", "-c", "{}".format(' '.join(cmd_list))]
+        pod_template_spec.spec.containers[0].command = ["sh", "-c", "{}".format(' '.join(cmd_list))]
         
         self.deployment_spec = self.generate_deployment_spec(pod_template_spec)
         self.service_spec = self.generate_service_spec()
