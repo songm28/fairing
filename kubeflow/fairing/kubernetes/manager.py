@@ -253,25 +253,37 @@ class KubeManager(object):
         :returns: str: the service external endpoint.
 
         """
-        label_selector_str = ', '.join("{}={}".format(k, v) for (k, v) in selectors.items())
+        url="{}.{}.svc.cluster.local:5000/predict".format(name, namespace)
+        label_selector_str=None
+        if selectors is not None: label_selector_str = ', '.join("{}={}".format(k, v) for (k, v) in selectors.items())
         # v1 = client.CoreV1Api()
-        w = watch.Watch()
+        # w = watch.Watch()
         print("Waiting for prediction endpoint to come up...")
         try:
-            for event in w.stream(self.api_v1.list_namespaced_service,
-                                  namespace=namespace,
-                                  label_selector=label_selector_str):
-                svc = event['object']
-                logger.debug("Event: %s %s",
-                             event['type'],
-                             event['object'])
-                ing = svc.status.load_balancer.ingress
-                if ing is not None and len(ing) > 0: #pylint:disable=len-as-condition
-                    # temporarily disable hostname. It's causing CI to fail when
-                    # run through papermill
-                    #url = "http://{}:5000/predict".format(ing[0].ip or ing[0].hostname)
-                    url = "http://{}:5000/predict".format(ing[0].ip)
-                    return url
+            # for event in w.stream(self.api_v1.list_namespaced_service,
+            #                       namespace=namespace,
+            #                       label_selector=label_selector_str):
+            #     svc = event['object']
+            #     logger.debug("Event: %s %s",
+            #                  event['type'],
+            #                  event['object'])
+            #     ing = svc.status.load_balancer.ingress
+            #     if ing is not None and len(ing) > 0: #pylint:disable=len-as-condition
+            #         # temporarily disable hostname. It's causing CI to fail when
+            #         # run through papermill
+            #         #url = "http://{}:5000/predict".format(ing[0].ip or ing[0].hostname)
+            #         url = "http://{}:5000/predict".format(ing[0].ip)
+            #         return url
+            if label_selector_str is None:
+                svcs = self.api_v1.list_namespaced_service(namespace=namespace)
+            else:
+                svcs = self.api_v1.list_namespaced_service(namespace=namespace, label_selector=label_selector_str)
+            if svcs is None: return url
+            svc_items = [ x for x in svcs.items if x.metadata.name.lower()==name.lower()]
+            ing=svc_items[0].status.load_balancer.ingress
+            if ing is None: return url
+            url="http://{}:5000/predict".format(ing[0].ip)
+            return url
         except ValueError as v:
             logger.error("error getting status for {} {}".format(name, str(v)))
         except client.rest.ApiException as e:
