@@ -15,7 +15,7 @@ class Serving(Job):
     """Serves a prediction endpoint using Kubernetes deployments and services"""
 
     def __init__(self, serving_class=None, namespace=None, runs=1, labels=None,
-                 service_type="ClusterIP", pod_spec_mutators=None, use_seldon=True, config_file=None):
+                 service_type="ClusterIP", pod_spec_mutators=None, use_seldon=True, config_file=None, verify_ssl=True):
         """
 
         :param serving_class: the name of the class that holds the predict function, optional when use_seldon is False.
@@ -24,15 +24,26 @@ class Serving(Job):
         :param labels: label for deployed service
         :param service_type: service type
         :param pod_spec_mutators: pod spec mutators (Default value = None)
+        :param use_seldon: use seldon to serve the service or not
+        :param config_file: kubernetes config file
+        :param verify_ssl: use ssl verify or not, set in the client config
         """
         super(Serving, self).__init__(namespace, runs,
                                       deployer_type=constants.SERVING_DEPLOPYER_TYPE,
                                       labels=labels,
-                                      config_file=config_file)
+                                      config_file=config_file,
+                                      verify_ssl=verify_ssl)
         self.serving_class = serving_class
         self.service_type = service_type
         self.pod_spec_mutators = pod_spec_mutators or []
         self.use_seldon=use_seldon
+
+        client_config=k8s_client.Configuration()
+        client_config.verify_ssl=verify_ssl
+        api_client=k8s_client.ApiClient(configuration=client_config)
+        self.v1_api = k8s_client.CoreV1Api(api_client=api_client)
+        self.apps_v1 = k8s_client.AppsV1Api(api_client=api_client)
+        self.api_instance = k8s_client.ExtensionsV1beta1Api(api_client=api_client)
 
     def deploy(self, pod_spec):
         """deploy a seldon-core REST service
@@ -70,10 +81,8 @@ class Serving(Job):
             service_output = api.sanitize_for_serialization(self.service_spec)
             logger.warning(json.dumps(service_output))
 
-        v1_api = k8s_client.CoreV1Api()
-        apps_v1 = k8s_client.AppsV1Api()
-        self.deployment = apps_v1.create_namespaced_deployment(self.namespace, self.deployment_spec)
-        self.service = v1_api.create_namespaced_service(self.namespace, self.service_spec)
+        self.deployment = self.apps_v1.create_namespaced_deployment(self.namespace, self.deployment_spec)
+        self.service = self.v1_api.create_namespaced_service(self.namespace, self.service_spec)
 
         if self.service_type == "LoadBalancer":
             url = self.backend.get_service_external_endpoint(
@@ -130,9 +139,9 @@ class Serving(Job):
 
     def delete(self):
         """ delete the deployed service"""
-        v1_api = k8s_client.CoreV1Api()
+        # v1_api = k8s_client.CoreV1Api()
         try:
-            v1_api.delete_namespaced_service(self.service.metadata.name, #pylint:disable=no-value-for-parameter
+            self.v1_api.delete_namespaced_service(self.service.metadata.name, #pylint:disable=no-value-for-parameter
                                              self.service.metadata.namespace)
             logger.info("Deleted service: {}/{}".format(self.service.metadata.namespace,
                                                         self.service.metadata.name))
@@ -141,9 +150,9 @@ class Serving(Job):
             logger.error("Not able to delete service: {}/{}".format(self.service.metadata.namespace,
                                                                     self.service.metadata.name))
         try:
-            api_instance = k8s_client.ExtensionsV1beta1Api()
+            # api_instance = k8s_client.ExtensionsV1beta1Api()
             del_opts = k8s_client.V1DeleteOptions(propagation_policy="Foreground")
-            api_instance.delete_namespaced_deployment(self.deployment.metadata.name,
+            self.api_instance.delete_namespaced_deployment(self.deployment.metadata.name,
                                                       self.deployment.metadata.namespace,
                                                       body=del_opts)
             logger.info("Deleted deployment: {}/{}".format(self.deployment.metadata.namespace,
