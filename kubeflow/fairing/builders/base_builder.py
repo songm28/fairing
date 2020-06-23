@@ -38,20 +38,21 @@ class BaseBuilder(BuilderInterface): #pylint:disable=too-many-instance-attribute
         self.image_tag = None
         self.docker_client = None
 
-    def generate_pod_spec(self):
+    def generate_pod_spec(self, image=None):
+        if not image:
+            image = self.image_tag
         return client.V1PodSpec(
             containers=[client.V1Container(
                 name='model',
-                image=self.image_tag,
+                image=image,
                 command=self.preprocessor.get_command(),
                 security_context=client.V1SecurityContext(
                     run_as_user=0,
                 ),
-                # env=[client.V1EnvVar(
-                #     name='FAIRING_RUNTIME',
-                #     value='1',
-                # )],
-                env = self.preprocessor.get_env_vars(),
+                env=[client.V1EnvVar(
+                    name='FAIRING_RUNTIME',
+                    value='1',
+                )],
                 # Set the directory where the python files are built.
                 # TODO(jlewi): Would it be better to set PYTHONPATH?
                 working_dir=self.preprocessor.path_prefix,

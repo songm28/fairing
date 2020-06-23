@@ -15,17 +15,14 @@ class BasePreProcessor(object):
     :param output_map: a dict of files to be added without preprocessing
     :param path_prefix: the prefix of the path where the files will be added in the container
     :param command: the command to pass to the builder
-	:param env_vars: the env var dict to pass to the builder
-	:param to_set_default_executable: the flag to set if set the default executable
+
     """
     def __init__(self,
                  input_files=None,
                  command=None,
                  executable=None,
                  path_prefix=constants.DEFAULT_DEST_PREFIX,
-                 output_map=None,
-				 env_vars=None,
-                 to_set_default_executable=True):
+                 output_map=None):
         self.executable = executable
         input_files = input_files or []
         command = command or ["python"]
@@ -40,10 +37,8 @@ class BasePreProcessor(object):
 
         self.path_prefix = path_prefix
         self.command = command
-        self.env_vars = env_vars
 
-        # self.set_default_executable()
-        if to_set_default_executable: self.set_default_executable()
+        self.set_default_executable()
 
     # TODO: Add workaround for users who do not want to set an executable for
     # their command.
@@ -115,8 +110,7 @@ class BasePreProcessor(object):
             for dst, src in self.context_map().items():
                 logging.debug("Context: %s, Adding %s at %s", output_file,
                               src, dst)
-                # tar.add(src, filter=reset_tar_mtime, arcname=dst, recursive=False)
-                tar.add(src, filter=reset_tar_mtime, arcname=dst, recursive=True if os.path.isdir(src) else False)
+                tar.add(src, filter=reset_tar_mtime, arcname=dst, recursive=False)
         self._context_tar_path = output_file
         return output_file, utils.crc(self._context_tar_path)
 
@@ -131,24 +125,6 @@ class BasePreProcessor(object):
         if self.executable is not None:
             cmd.append(os.path.join(self.path_prefix, self.executable))
         return cmd
-
-    def get_env_vars(self):
-        from kubernetes import client
-        ret_list = list()
-        if self.env_vars is not None: 
-            for k,v in self.env_vars.items():
-                ret_list.append(client.V1EnvVar(
-                    name=k,
-                    value=str(v),
-                    ) 
-                )
-        
-        ret_list.append(client.V1EnvVar(
-                    name='FAIRING_RUNTIME',
-                    value='1',
-                    ) 
-        )
-        return ret_list
 
     def fairing_runtime_files(self):
         """Search the fairing runtime files 'runtime_config.py'

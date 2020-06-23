@@ -4,8 +4,6 @@ from kubeflow.fairing.kubernetes.manager import client, KubeManager
 from kubeflow.fairing import utils
 from kubeflow.fairing import constants
 
-constants.constants.KANIKO_IMAGE = "gcr.io/kaniko-project/executor:v0.14.0"
-
 
 class MinioContextSource(ContextSourceInterface):
     def __init__(self, endpoint_url, minio_secret, minio_secret_key,
@@ -42,7 +40,8 @@ class MinioContextSource(ContextSourceInterface):
         args = [
             "--dockerfile=Dockerfile",
             "--destination=" + image_name,
-            "--context=" + self.uploaded_context_url
+            "--context=" + self.uploaded_context_url,
+            "--single-snapshot"
         ]
         if not push:
             args.append("--no-push")

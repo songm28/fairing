@@ -33,7 +33,7 @@ DEFAULT_USER_AGENT = 'kubeflow-fairing/{VERSION}'
 
 # Job Constants
 JOB_DEFAULT_NAME = 'fairing-job-'
-JOB_DEPLOPYER_TYPE = 'job'
+JOB_DEPLOYER_TYPE = 'job'
 
 # Serving Constants
 SERVING_DEPLOPYER_TYPE = 'serving'
@@ -68,7 +68,7 @@ PVC_DEFAULT_MOUNT_PATH = '/mnt'
 PVC_DEFAULT_VOLUME_NAME = 'fairing-volume-'
 
 # Kaniko Constants
-KANIKO_IMAGE = 'gcr.io/kaniko-project/executor:v0.14.0'
+KANIKO_IMAGE = 'gcr.io/kaniko-project/executor:v0.22.0'
 
 #Fairing Logging Constants
 FAIRING_LOG_LEVEL = os.environ.get('FAIRING_LOG_LEVEL', 'INFO').upper()

@@ -21,7 +21,7 @@ class KubeManager(object):
     """Handles communication with Kubernetes' client."""
 
     def __init__(self, config_file=None, context=None,
-                 client_configuration=None, persist_config=True, verify_ssl=True):
+                 client_configuration=None, persist_config=True):
         """
         :param config_file: kubeconfig file, defaults to ~/.kube/config. Note that for the case
                that the SDK is running in cluster and you want to operate in another remote
@@ -42,16 +42,6 @@ class KubeManager(object):
                 persist_config=self.persist_config)
         else:
             config.load_incluster_config()
-        
-        # not verify ssl
-        self.verify_ssl=verify_ssl
-        client_config=client.Configuration()
-        client_config.verify_ssl=self.verify_ssl
-        api_client=client.ApiClient(configuration=client_config)
-        self.api_instance = client.BatchV1Api(api_client=api_client)
-        self.api_v1 = client.CoreV1Api(api_client=api_client)
-        self.api_extension = client.ExtensionsV1beta1Api(api_client=api_client)
-        self.api_app = client.AppsV1Api(api_client=api_client)
 
     def create_job(self, namespace, job):
         """Creates a V1Job in the specified namespace.
@@ -61,8 +51,8 @@ class KubeManager(object):
         :returns: object: Created Job.
 
         """
-        # api_instance = client.BatchV1Api()
-        return self.api_instance.create_namespaced_job(namespace, job)
+        api_instance = client.BatchV1Api()
+        return api_instance.create_namespaced_job(namespace, job)
 
     def create_tf_job(self, namespace, tfjob):
         """Create the provided TFJob in the specified namespace.
@@ -149,8 +139,8 @@ class KubeManager(object):
         :returns: object: Created V1Deployments.
 
         """
-        # api_instance = client.AppsV1Api()
-        return self.api_app.create_namespaced_deployment(namespace, deployment)
+        api_instance = client.AppsV1Api()
+        return api_instance.create_namespaced_deployment(namespace, deployment)
 
     def create_isvc(self, namespace, isvc):
         """Create the provided InferenceService in the specified namespace.
@@ -199,8 +189,8 @@ class KubeManager(object):
         :returns: object: the deleted job.
 
         """
-        # api_instance = client.BatchV1Api()
-        self.api_instance.delete_namespaced_job(
+        api_instance = client.BatchV1Api()
+        api_instance.delete_namespaced_job(
             name,
             namespace,
             client.V1DeleteOptions())
@@ -213,8 +203,8 @@ class KubeManager(object):
         :returns: obje   deployment.
 
         """
-        # api_instance = client.ExtensionsV1beta1Api()
-        self.api_extension.delete_namespaced_deployment(
+        api_instance = client.ExtensionsV1beta1Api()
+        api_instance.delete_namespaced_deployment(
             name,
             namespace,
             client.V1DeleteOptions())
@@ -227,8 +217,7 @@ class KubeManager(object):
         :returns: bool: True if the secret exists, otherwise return False.
 
         """
-        # secrets = client.CoreV1Api().list_namespaced_secret(namespace)
-        secrets = self.api_v1.list_namespaced_secret(namespace)
+        secrets = client.CoreV1Api().list_namespaced_secret(namespace)
         secret_names = [secret.metadata.name for secret in secrets.items]
         return name in secret_names
 
@@ -240,8 +229,8 @@ class KubeManager(object):
         :returns: object: Created secret.
 
         """
-        # api_instance = client.CoreV1Api()
-        return self.api_v1.create_namespaced_secret(namespace, secret)
+        api_instance = client.CoreV1Api()
+        return api_instance.create_namespaced_secret(namespace, secret)
 
     def get_service_external_endpoint(self, name, namespace, selectors=None): #pylint:disable=inconsistent-return-statements
         """Get the service external endpoint as http://ip_or_hostname:5000/predict.
@@ -253,37 +242,25 @@ class KubeManager(object):
         :returns: str: the service external endpoint.
 
         """
-        url="{}.{}.svc.cluster.local:5000/predict".format(name, namespace)
-        label_selector_str=None
-        if selectors is not None: label_selector_str = ', '.join("{}={}".format(k, v) for (k, v) in selectors.items())
-        # v1 = client.CoreV1Api()
-        # w = watch.Watch()
+        label_selector_str = ', '.join("{}={}".format(k, v) for (k, v) in selectors.items())
+        v1 = client.CoreV1Api()
+        w = watch.Watch()
         print("Waiting for prediction endpoint to come up...")
         try:
-            # for event in w.stream(self.api_v1.list_namespaced_service,
-            #                       namespace=namespace,
-            #                       label_selector=label_selector_str):
-            #     svc = event['object']
-            #     logger.debug("Event: %s %s",
-            #                  event['type'],
-            #                  event['object'])
-            #     ing = svc.status.load_balancer.ingress
-            #     if ing is not None and len(ing) > 0: #pylint:disable=len-as-condition
-            #         # temporarily disable hostname. It's causing CI to fail when
-            #         # run through papermill
-            #         #url = "http://{}:5000/predict".format(ing[0].ip or ing[0].hostname)
-            #         url = "http://{}:5000/predict".format(ing[0].ip)
-            #         return url
-            if label_selector_str is None:
-                svcs = self.api_v1.list_namespaced_service(namespace=namespace)
-            else:
-                svcs = self.api_v1.list_namespaced_service(namespace=namespace, label_selector=label_selector_str)
-            if svcs is None: return url
-            svc_items = [ x for x in svcs.items if x.metadata.name.lower()==name.lower()]
-            ing=svc_items[0].status.load_balancer.ingress
-            if ing is None: return url
-            url="http://{}:5000/predict".format(ing[0].ip)
-            return url
+            for event in w.stream(v1.list_namespaced_service,
+                                  namespace=namespace,
+                                  label_selector=label_selector_str):
+                svc = event['object']
+                logger.debug("Event: %s %s",
+                             event['type'],
+                             event['object'])
+                ing = svc.status.load_balancer.ingress
+                if ing is not None and len(ing) > 0: #pylint:disable=len-as-condition
+                    # temporarily disable hostname. It's causing CI to fail when
+                    # run through papermill
+                    #url = "http://{}:5000/predict".format(ing[0].ip or ing[0].hostname)
+                    url = "http://{}:5000/predict".format(ing[0].ip)
+                    return url
         except ValueError as v:
             logger.error("error getting status for {} {}".format(name, str(v)))
         except client.rest.ApiException as e:
@@ -305,11 +282,11 @@ class KubeManager(object):
         """
         tail = ''
         label_selector_str = ', '.join("{}={}".format(k, v) for (k, v) in selectors.items())
-        # v1 = client.CoreV1Api()
+        v1 = client.CoreV1Api()
         # Retry to allow starting of pod
         w = watch.Watch()
         try:
-            for event in w.stream(self.api_v1.list_namespaced_pod,
+            for event in w.stream(v1.list_namespaced_pod,
                                   namespace=namespace,
                                   label_selector=label_selector_str):
                 pod = event['object']
@@ -325,7 +302,7 @@ class KubeManager(object):
                       or pod.status.phase == 'Succeeded'):
                     logger.info("Pod started running %s",
                                 pod.status.container_statuses[0].ready)
-                    tail = self.api_v1.read_namespaced_pod_log(pod.metadata.name,
+                    tail = v1.read_namespaced_pod_log(pod.metadata.name,
                                                       namespace,
                                                       follow=follow,
                                                       _preload_content=False,
@@ -339,7 +316,7 @@ class KubeManager(object):
                                  pod.metadata.name,
                                  pod.status.container_statuses[0].state.terminated.reason,
                                  pod.status.container_statuses[0].state.terminated.message)
-                    tail = self.api_v1.read_namespaced_pod_log(pod.metadata.name,
+                    tail = v1.read_namespaced_pod_log(pod.metadata.name,
                                                       namespace,
                                                       follow=follow,
                                                       _preload_content=False,

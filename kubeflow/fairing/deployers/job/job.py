@@ -18,9 +18,9 @@ class Job(DeployerInterface): #pylint:disable=too-many-instance-attributes
 
     def __init__(self, namespace=None, runs=1, output=None,
                  cleanup=True, labels=None, job_name=None,
-                 stream_log=True, deployer_type=constants.JOB_DEPLOPYER_TYPE,
+                 stream_log=True, deployer_type=constants.JOB_DEPLOYER_TYPE,
                  pod_spec_mutators=None, annotations=None, config_file=None,
-                 context=None, client_configuration=None, persist_config=True, verify_ssl=True):
+                 context=None, client_configuration=None, persist_config=True):
         """
 
         :param namespace: k8s namespace where the training's components will be deployed.
@@ -39,7 +39,6 @@ class Job(DeployerInterface): #pylint:disable=too-many-instance-attributes
         :param context: kubernetes context
         :param client_configuration: The kubernetes.client.Configuration to set configs to.
         :param persist_config: If True, config file will be updated when changed
-        :param verify_ssl: use ssl verify or not, set in the client config
         """
         if namespace is None:
             self.namespace = utils.get_default_target_namespace()
@@ -56,14 +55,12 @@ class Job(DeployerInterface): #pylint:disable=too-many-instance-attributes
             config_file=config_file,
             context=context,
             client_configuration=client_configuration,
-            persist_config=persist_config,
-            verify_ssl=verify_ssl)
+            persist_config=persist_config)
         self.cleanup = cleanup
         self.stream_log = stream_log
         self.set_labels(labels, deployer_type)
         self.set_anotations(annotations)
         self.pod_spec_mutators = pod_spec_mutators or []
-        self.verify_ssl=verify_ssl
 
     def set_anotations(self, annotations):
         self.annotations = {}
@@ -174,10 +171,7 @@ class Job(DeployerInterface): #pylint:disable=too-many-instance-attributes
     def do_cleanup(self):
         """ clean up the pods after job finished"""
         logger.warning("Cleaning up job {}...".format(self._created_job.metadata.name))
-        client_config=k8s_client.Configuration()
-        client_config.verify_ssl=self.verify_ssl
-        api_client=k8s_client.ApiClient(configuration=client_config)
-        k8s_client.BatchV1Api(api_client=api_client).delete_namespaced_job(
+        k8s_client.BatchV1Api().delete_namespaced_job(
             self._created_job.metadata.name,
             self._created_job.metadata.namespace,
             body=k8s_client.V1DeleteOptions(propagation_policy='Foreground'))
