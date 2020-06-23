@@ -71,7 +71,10 @@ class AppendBuilder(BaseBuilder):
             with open(self.context_file, 'rb') as f:
                 new_img = append.Layer(src_image, f.read(), overrides=metadata.Overrides(
                     cmd=self.preprocessor.get_command(),
-                    user='0', env={"FAIRING_RUNTIME": "1"}))
+                    user='0', 
+                    env = self.preprocess.get_env_vars()
+                    )
+                )
         return new_img
 
     def _push(self, transport, src, img, dst):
