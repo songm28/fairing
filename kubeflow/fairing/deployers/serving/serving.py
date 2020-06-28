@@ -19,7 +19,7 @@ class Serving(Job):
         """
 
         :param serving_class: dict, the name and parameters(dict) of the class that holds the predict function, optional when use_seldon is False.
-                              e.g. {"MyModel":{"name":"model_path","value":"model.pkl","type":"STRING"}}
+                              e.g. {"MyModel":[{"name":"model_path","value":"model.pkl","type":"STRING"}, {"name":"model_path2","value":"model.pkl","type":"STRING"}]}
         :param namespace: The k8s namespace where the it will be deployed.
         :param runs:
         :param labels: label for deployed service
@@ -72,7 +72,10 @@ class Serving(Job):
             # cmd_list.append("&&")
         if self.use_seldon:
             if cmd_list is not None and len(cmd_list)>0: cmd_list.append("&&")
-            seldon_parameters = "[]" if self.serving_class_parameters is None else "['{}']".format(json.dumps(self.serving_class_parameters))
+            seldon_parameters = "[]" 
+            if self.serving_class_parameters is not None and len(self.serving_class_parameters)>0:
+                seldon_parameters=list()
+                [ seldon_parameters.append(json.dumps(x)) for x in self.serving_class_parameters]
             cmd_list.extend(["seldon-core-microservice",
                             self.serving_class, "REST",
                             "--service-type=MODEL", "--persistence=0", 
