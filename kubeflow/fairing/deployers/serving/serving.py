@@ -34,8 +34,13 @@ class Serving(Job):
                                       labels=labels,
                                       config_file=config_file,
                                       verify_ssl=verify_ssl)
-        self.serving_class = serving_class if serving_class is None else serving_class.keys()[0]
-        self.serving_class_parameters = None if serving_class is None else serving_class.values()[0]
+        self.serving_class = None
+        self.serving_class_parameters = None 
+        if serving_class is not None and serving_class.keys() is not None and len(serving_class.keys())>0:
+            for k,v in serving_class.items():
+                self.serving_class=k
+                self.serving_class_parameters=v
+
         self.service_type = service_type
         self.pod_spec_mutators = pod_spec_mutators or []
         self.use_seldon=use_seldon
@@ -67,10 +72,11 @@ class Serving(Job):
             # cmd_list.append("&&")
         if self.use_seldon:
             if cmd_list is not None and len(cmd_list)>0: cmd_list.append("&&")
+            seldon_parameters = "[]" if self.serving_class_parameters is None else "['{}']".format(json.dumps(self.serving_class_parameters))
             cmd_list.extend(["seldon-core-microservice",
                             self.serving_class, "REST",
                             "--service-type=MODEL", "--persistence=0", 
-                            "--parameters=[{}]".format("" if self.serving_class_parameters is None else json.dumps(self.serving_class_parameters))
+                            "--parameters={}".format(seldon_parameters)
                             ])
             
 
