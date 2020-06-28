@@ -72,9 +72,8 @@ class Serving(Job):
             # cmd_list.append("&&")
         if self.use_seldon:
             if cmd_list is not None and len(cmd_list)>0: cmd_list.append("&&")
-            seldon_parameters = "[]" 
+            seldon_parameters=list()                
             if self.serving_class_parameters is not None and len(self.serving_class_parameters)>0:
-                seldon_parameters=list()
                 [ seldon_parameters.append(json.dumps(x)) for x in self.serving_class_parameters]
             cmd_list.extend(["seldon-core-microservice",
                             self.serving_class, "REST",
