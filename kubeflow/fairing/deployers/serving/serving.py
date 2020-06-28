@@ -81,7 +81,7 @@ class Serving(Job):
                             "--parameters={}".format(seldon_parameters)
                             ])
             
-
+        logging.info(cmd_list)
         pod_template_spec.spec.containers[0].command = ["sh", "-c", "{}".format(' '.join(cmd_list))]
         
         self.deployment_spec = self.generate_deployment_spec(pod_template_spec)
