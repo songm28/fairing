@@ -18,7 +18,8 @@ class Serving(Job):
                  service_type="ClusterIP", pod_spec_mutators=None, use_seldon=True, config_file=None, verify_ssl=True):
         """
 
-        :param serving_class: the name of the class that holds the predict function, optional when use_seldon is False.
+        :param serving_class: dict, the name and parameters(dict) of the class that holds the predict function, optional when use_seldon is False.
+                              e.g. {"MyModel":{"name":"model_path","value":"model.pkl","type":"STRING"}}
         :param namespace: The k8s namespace where the it will be deployed.
         :param runs:
         :param labels: label for deployed service
@@ -33,7 +34,8 @@ class Serving(Job):
                                       labels=labels,
                                       config_file=config_file,
                                       verify_ssl=verify_ssl)
-        self.serving_class = serving_class
+        self.serving_class = serving_class if serving_class is None else serving_class.keys()[0]
+        self.serving_class_parameters = None if serving_class is None else serving_class.values()[0]
         self.service_type = service_type
         self.pod_spec_mutators = pod_spec_mutators or []
         self.use_seldon=use_seldon
@@ -67,7 +69,10 @@ class Serving(Job):
             if cmd_list is not None and len(cmd_list)>0: cmd_list.append("&&")
             cmd_list.extend(["seldon-core-microservice",
                             self.serving_class, "REST",
-                            "--service-type=MODEL", "--persistence=0"])
+                            "--service-type=MODEL", "--persistence=0", 
+                            "--parameters=[{}]".format("" if self.serving_class_parameters is None else json.dumps(self.serving_class_parameters))
+                            ])
+            
 
         pod_template_spec.spec.containers[0].command = ["sh", "-c", "{}".format(' '.join(cmd_list))]
         
