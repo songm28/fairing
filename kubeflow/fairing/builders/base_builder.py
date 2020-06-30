@@ -47,11 +47,10 @@ class BaseBuilder(BuilderInterface): #pylint:disable=too-many-instance-attribute
                 security_context=client.V1SecurityContext(
                     run_as_user=0,
                 ),
-                # env=[client.V1EnvVar(
-                #     name='FAIRING_RUNTIME',
-                #     value='1',
-                # )],
-                env = self.preprocessor.get_env_vars(),
+                env=[client.V1EnvVar(
+                    name='FAIRING_RUNTIME',
+                    value='1',
+                )],
                 # Set the directory where the python files are built.
                 # TODO(jlewi): Would it be better to set PYTHONPATH?
                 working_dir=self.preprocessor.path_prefix,

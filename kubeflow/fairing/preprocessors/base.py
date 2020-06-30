@@ -24,8 +24,7 @@ class BasePreProcessor(object):
                  executable=None,
                  path_prefix=constants.DEFAULT_DEST_PREFIX,
                  output_map=None,
-				 env_vars=None,
-                 to_set_default_executable=True):
+				 to_set_default_executable=True):
         self.executable = executable
         input_files = input_files or []
         command = command or ["python"]
@@ -40,8 +39,7 @@ class BasePreProcessor(object):
 
         self.path_prefix = path_prefix
         self.command = command
-        self.env_vars = env_vars
-
+        
         # self.set_default_executable()
         if to_set_default_executable: self.set_default_executable()
 
@@ -131,24 +129,6 @@ class BasePreProcessor(object):
         if self.executable is not None:
             cmd.append(os.path.join(self.path_prefix, self.executable))
         return cmd
-
-    def get_env_vars(self):
-        from kubernetes import client
-        ret_list = list()
-        if self.env_vars is not None: 
-            for k,v in self.env_vars.items():
-                ret_list.append(client.V1EnvVar(
-                    name=k,
-                    value=str(v),
-                    ) 
-                )
-        
-        ret_list.append(client.V1EnvVar(
-                    name='FAIRING_RUNTIME',
-                    value='1',
-                    ) 
-        )
-        return ret_list
 
     def fairing_runtime_files(self):
         """Search the fairing runtime files 'runtime_config.py'

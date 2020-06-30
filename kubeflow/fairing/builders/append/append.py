@@ -72,8 +72,7 @@ class AppendBuilder(BaseBuilder):
                 new_img = append.Layer(src_image, f.read(), overrides=metadata.Overrides(
                     cmd=self.preprocessor.get_command(),
                     user='0', 
-                    # env={"FAIRING_RUNTIME": "1"}
-                    env = self.preprocess.get_env_vars()
+                    env={"FAIRING_RUNTIME": "1"}
                     )
                 )
         return new_img
