@@ -243,7 +243,7 @@ class KubeManager(object):
         # api_instance = client.CoreV1Api()
         return self.api_v1.create_namespaced_secret(namespace, secret)
 
-    def get_service_external_endpoint(self, name, namespace, selectors=None, service_internal_port=5000): #pylint:disable=inconsistent-return-statements
+    def get_service_external_endpoint(self, name, namespace, selectors=None, service_internal_port="5000"): #pylint:disable=inconsistent-return-statements
         """Get the service external endpoint as http://ip_or_hostname:5000/predict.
 
         :param name: The sevice name

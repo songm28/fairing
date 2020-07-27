@@ -15,7 +15,7 @@ class Serving(Job):
     """Serves a prediction endpoint using Kubernetes deployments and services"""
 
     def __init__(self, serving_class=None, namespace=None, runs=1, labels=None,
-                 service_type="ClusterIP", service_port=5000, pod_spec_mutators=None, use_seldon=True, config_file=None, verify_ssl=True):
+                 service_type="ClusterIP", service_port="5000", pod_spec_mutators=None, use_seldon=True, config_file=None, verify_ssl=True):
         """
 
         :param serving_class: dict, the name and parameters(dict) of the class that holds the predict function, optional when use_seldon is False.
@@ -146,7 +146,7 @@ class Serving(Job):
                 selector=self.labels,
                 ports=[k8s_client.V1ServicePort(
                     name="serving",
-                    port=self.service_port
+                    port=int(self.service_port)
                 )],
                 type=self.service_type,
             )
