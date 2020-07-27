@@ -15,7 +15,7 @@ class Serving(Job):
     """Serves a prediction endpoint using Kubernetes deployments and services"""
 
     def __init__(self, serving_class=None, namespace=None, runs=1, labels=None,
-                 service_type="ClusterIP", pod_spec_mutators=None, use_seldon=True, config_file=None, verify_ssl=True):
+                 service_type="ClusterIP", service_port=5000, pod_spec_mutators=None, use_seldon=True, config_file=None, verify_ssl=True):
         """
 
         :param serving_class: dict, the name and parameters(dict) of the class that holds the predict function, optional when use_seldon is False.
@@ -23,7 +23,8 @@ class Serving(Job):
         :param namespace: The k8s namespace where the it will be deployed.
         :param runs:
         :param labels: label for deployed service
-        :param service_type: service type
+        :param service_type: str, service type
+        :param service_port: int, service port
         :param pod_spec_mutators: pod spec mutators (Default value = None)
         :param use_seldon: use seldon to serve the service or not
         :param config_file: kubernetes config file
@@ -42,6 +43,7 @@ class Serving(Job):
                 self.serving_class_parameters=v
 
         self.service_type = service_type
+        self.service_port = service_port
         self.pod_spec_mutators = pod_spec_mutators or []
         self.use_seldon=use_seldon
 
@@ -100,12 +102,12 @@ class Serving(Job):
         if self.service_type == "LoadBalancer":
             url = self.backend.get_service_external_endpoint(
                 self.service.metadata.name, self.service.metadata.namespace,
-                self.service.metadata.labels)
+                self.service.metadata.labels,  service_internal_port=self.service_port)
         else:
             # TODO(jlewi): The suffix won't always be cluster.local since
             # its configurable. Is there a way to get it programmatically?
-            url = "http://{0}.{1}.svc.cluster.local:5000/predict".format(
-                self.service.metadata.name, self.service.metadata.namespace)
+            url = "http://{0}.{1}.svc.cluster.local:{2}/predict".format(
+                self.service.metadata.name, self.service.metadata.namespace, self.service_port)
 
         logging.info("Cluster endpoint: %s", url)
         return url
@@ -144,7 +146,7 @@ class Serving(Job):
                 selector=self.labels,
                 ports=[k8s_client.V1ServicePort(
                     name="serving",
-                    port=5000
+                    port=self.service_port
                 )],
                 type=self.service_type,
             )

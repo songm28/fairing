@@ -243,7 +243,7 @@ class KubeManager(object):
         # api_instance = client.CoreV1Api()
         return self.api_v1.create_namespaced_secret(namespace, secret)
 
-    def get_service_external_endpoint(self, name, namespace, selectors=None): #pylint:disable=inconsistent-return-statements
+    def get_service_external_endpoint(self, name, namespace, selectors=None, service_internal_port=5000): #pylint:disable=inconsistent-return-statements
         """Get the service external endpoint as http://ip_or_hostname:5000/predict.
 
         :param name: The sevice name
@@ -253,7 +253,7 @@ class KubeManager(object):
         :returns: str: the service external endpoint.
 
         """
-        url="{}.{}.svc.cluster.local:5000/predict".format(name, namespace)
+        url="{}.{}.svc.cluster.local:{}/predict".format(name, namespace, service_internal_port)
         label_selector_str=None
         if selectors is not None: label_selector_str = ', '.join("{}={}".format(k, v) for (k, v) in selectors.items())
         # v1 = client.CoreV1Api()
@@ -282,7 +282,7 @@ class KubeManager(object):
             svc_items = [ x for x in svcs.items if x.metadata.name.lower()==name.lower()]
             ing=svc_items[0].status.load_balancer.ingress
             if ing is None: return url
-            url="http://{}:5000/predict".format(ing[0].ip)
+            url="http://{}:{}/predict".format(ing[0].ip, service_internal_port)
             return url
         except ValueError as v:
             logger.error("error getting status for {} {}".format(name, str(v)))
