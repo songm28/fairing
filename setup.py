@@ -5,13 +5,13 @@ with open('requirements.txt') as f:
 
 setuptools.setup(
     name='kubeflow-fairing',
-    version='0.7.2',
+    version='0.8.0',
     author="Kubeflow Authors",
     author_email='hejinchi@cn.ibm.com',
     license="Apache License Version 2.0",
     description="Kubeflow Fairing Python SDK.",
     long_description="Python SDK for Kubeflow Fairing components.",
-    url="https://github.com/kubeflow/fairing",
+    url="https://github.com/songm28/fairing",
     packages=setuptools.find_packages(
         include=("kubeflow*", "containerregistry*",)),
     package_data={},
