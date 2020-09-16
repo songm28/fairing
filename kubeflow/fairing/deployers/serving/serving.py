@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class Serving(Job):
     """Serves a prediction endpoint using Kubernetes deployments and services"""
 
-    def __init__(self, serving_class=None, namespace=None, runs=1, labels=None,
+    def __init__(self, serving_class=None, namespace=None, runs=1, labels=None, service_name=None, deployment_name=None,
                  service_type="ClusterIP", service_port="5000", pod_spec_mutators=None, use_seldon=True, config_file=None, verify_ssl=True):
         """
 
@@ -53,6 +53,8 @@ class Serving(Job):
         self.v1_api = k8s_client.CoreV1Api(api_client=api_client)
         self.apps_v1 = k8s_client.AppsV1Api(api_client=api_client)
         self.api_instance = k8s_client.ExtensionsV1beta1Api(api_client=api_client)
+        self.input_deployment_name=deployment_name
+        self.input_service_name=service_name
 
     def deploy(self, pod_spec):
         """deploy a seldon-core REST service
@@ -87,7 +89,9 @@ class Serving(Job):
         pod_template_spec.spec.containers[0].command = ["sh", "-c", "{}".format(' '.join(cmd_list))]
         
         self.deployment_spec = self.generate_deployment_spec(pod_template_spec)
+        if self.input_deployment_name is not None: self.deployment_spec.metadata.name=self.input_deployment_name
         self.service_spec = self.generate_service_spec()
+        if self.input_service_name is not None: self.service_spec.metadata.name=self.input_service_name
 
         if self.output:
             api = k8s_client.ApiClient()
