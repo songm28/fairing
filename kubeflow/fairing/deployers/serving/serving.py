@@ -24,7 +24,7 @@ class Serving(Job):
         :param runs:
         :param labels: label for deployed service
         :param service_type: str, service type
-        :param service_port: int, service port
+        :param service_port: int/list(int), service port
         :param pod_spec_mutators: pod spec mutators (Default value = None)
         :param use_seldon: use seldon to serve the service or not
         :param config_file: kubernetes config file
@@ -43,7 +43,14 @@ class Serving(Job):
                 self.serving_class_parameters=v
 
         self.service_type = service_type
-        self.service_port = service_port
+        self.primary_service_port=5000
+        self.service_port = list()
+        if type(service_port) == int:
+            self.primary_service_port = service_port
+            self.service_port.append(service_port)
+        elif type(service_port) == list and len(service_port)>0:
+            self.primary_service_port = service_port[0]
+            self.service_port = service_port
         self.pod_spec_mutators = pod_spec_mutators or []
         self.use_seldon=use_seldon
 
@@ -106,12 +113,12 @@ class Serving(Job):
         if self.service_type == "LoadBalancer":
             url = self.backend.get_service_external_endpoint(
                 self.service.metadata.name, self.service.metadata.namespace,
-                self.service.metadata.labels,  service_internal_port=self.service_port)
+                self.service.metadata.labels,  service_internal_port=self.primary_service_port)
         else:
             # TODO(jlewi): The suffix won't always be cluster.local since
             # its configurable. Is there a way to get it programmatically?
             url = "http://{0}.{1}.svc.cluster.local:{2}/predict".format(
-                self.service.metadata.name, self.service.metadata.namespace, self.service_port)
+                self.service.metadata.name, self.service.metadata.namespace, self.primary_service_port)
 
         logging.info("Cluster endpoint: %s", url)
         return url
@@ -146,12 +153,21 @@ class Serving(Job):
                 generate_name="fairing-service-",
                 labels=self.labels,
             ),
+            # spec=k8s_client.V1ServiceSpec(
+            #     selector=self.labels,
+            #     ports=[k8s_client.V1ServicePort(
+            #         name="serving",
+            #         port=int(self.service_port)
+            #     )],
+            #     type=self.service_type,
+            # )
             spec=k8s_client.V1ServiceSpec(
                 selector=self.labels,
                 ports=[k8s_client.V1ServicePort(
-                    name="serving",
-                    port=int(self.service_port)
-                )],
+                            name="port{}".format(str(x)),
+                            port=int(x)
+                        ) for x in self.service_port
+                    ],
                 type=self.service_type,
             )
         )
