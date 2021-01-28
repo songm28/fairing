@@ -45,7 +45,7 @@ class Serving(Job):
         self.service_type = service_type
         self.primary_service_port=5000
         self.service_port = list()
-        if type(service_port) == int:
+        if type(service_port) == int or type(service_port) == str:
             self.primary_service_port = service_port
             self.service_port.append(service_port)
         elif type(service_port) == list and len(service_port)>0:
