@@ -84,6 +84,34 @@ def mounting_pvc(pvc_name, pvc_mount_path=constants.PVC_DEFAULT_MOUNT_PATH):
 #                 pod_spec.containers[0].env = env_list
 #     return _add_env
 
+def build_env_list_for_pod(env_vars):
+    env_list = []
+    for env_name, env_value in env_vars.items():
+        if env_name is None or env_value is None : continue
+        if type(env_value)==str: # env is key/value pair
+            env_list.append(client.V1EnvVar(name=env_name, value=env_value))
+
+        elif type(env_value)==dict: # env is ref
+            if env_value.keys() is None or len(env_value.keys()) < 3: continue
+            if "type" not in env_value.keys() or "name" not in env_value.keys() or "key" not in env_value.keys(): continue
+            
+            ref_type=env_value["type"]
+            ref_name=env_value["name"]
+            ref_key=env_value["key"]
+            ref_selector = None
+            env_var_source = None
+            if ref_type.lower() == "configmap": 
+                ref_selector=client.V1ConfigMapKeySelector(key=ref_key, name=ref_name)
+                env_var_source = client.V1EnvVarSource(config_map_key_ref=ref_selector)
+            elif ref_type.lower() == "secret": 
+                ref_selector=client.V1SecretKeySelector(key=ref_key, name=ref_name)
+                env_var_source = client.V1EnvVarSource(secret_key_ref=ref_selector)
+            elif ref_type.lower() == "field": pass
+            elif ref_type.lower() == "resource_field": pass
+            
+            if env_var_source is not None: env_list.append(client.V1EnvVar(name=env_name, value_from=env_var_source))
+    return env_list
+
 def add_env(env_vars):
     """The function for pod_spec_mutators to add custom environment vars.
     :param env_vars: dict of custom environment vars.
@@ -92,32 +120,7 @@ def add_env(env_vars):
     :returns: object: function for add environment vars to pods.
     """
     def _add_env(kube_manager, pod_spec, namespace): #pylint:disable=unused-argument
-        env_list = []
-        for env_name, env_value in env_vars.items():
-            if env_name is None or env_value is None : continue
-            if type(env_value)==str: # env is key/value pair
-                env_list.append(client.V1EnvVar(name=env_name, value=env_value))
-
-            elif type(env_value)==dict: # env is ref
-                if env_value.keys() is None or len(env_value.keys()) < 3: continue
-                if "type" not in env_value.keys() or "name" not in env_value.keys() or "key" not in env_value.keys(): continue
-                
-                ref_type=env_value["type"]
-                ref_name=env_value["name"]
-                ref_key=env_value["key"]
-                ref_selector = None
-                env_var_source = None
-                if ref_type.lower() == "configmap": 
-                    ref_selector=client.V1ConfigMapKeySelector(key=ref_key, name=ref_name)
-                    env_var_source = client.V1EnvVarSource(config_map_key_ref=ref_selector)
-                elif ref_type.lower() == "secret": 
-                    ref_selector=client.V1SecretKeySelector(key=ref_key, name=ref_name)
-                    env_var_source = client.V1EnvVarSource(secret_key_ref=ref_selector)
-                elif ref_type.lower() == "field": pass
-                elif ref_type.lower() == "resource_field": pass
-                
-                if env_var_source is not None: env_list.append(client.V1EnvVar(name=env_name, value_from=env_var_source))
-
+        env_list = build_env_list_for_pod(env_vars=env_vars)
         if pod_spec.containers and len(pod_spec.containers) >= 1 and len(env_list) > 0:
             if pod_spec.containers[0].env:
                 pod_spec.containers[0].env.extend(env_list)
